@@ -1,43 +1,31 @@
-<!doctype html>
-<html lang="es-AR">
+
+<!DOCTYPE html>
+<html lang="es">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#172943">
-  <meta name="description" content="Buscador de Vacantes 2027 de Docentes Brown.">
-  <title>Buscador de Vacantes 2027 · Docentes Brown</title>
+  <title>Docentes Brown | Buscador de Vacantes 2027</title>
   <style>
-    :root { color-scheme: light; --navy:#172943; --cream:#f5f1e8; --muted:#6f7b8b; }
     * { box-sizing: border-box; }
-    html, body { margin:0; width:100%; min-height:100%; background:var(--cream); }
-    body { min-height:100vh; min-height:100dvh; overflow:hidden; font-family:Arial,sans-serif; }
-    .app-frame { display:block; width:100%; height:100vh; height:100dvh; border:0; background:var(--cream); }
-    .fallback { position:fixed; inset:auto 12px 12px; z-index:2; display:none; padding:12px 14px; border:1px solid #e8e1d5; border-radius:14px; background:#fffefa; color:var(--navy); font-size:13px; text-align:center; box-shadow:0 8px 25px #17294314; }
-    .fallback a { color:var(--navy); font-weight:700; }
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: #F5F1E8;
+    }
+    iframe {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
   </style>
 </head>
 <body>
   <iframe
-    class="app-frame"
     src="https://script.google.com/macros/s/AKfycbxM35Wagvq6k7jR4Tmk9H1SKhx-BWO3L58MP8Z4uf36zDL22raamHEpWx0w37tU1sifQw/exec"
-    title="Buscador de Vacantes 2027 · Docentes Brown"
-    loading="eager"
-    referrerpolicy="strict-origin-when-cross-origin"
-    allow="clipboard-read; clipboard-write">
+    title="Buscador de Vacantes Docentes Brown">
   </iframe>
-  <div class="fallback" id="fallback">
-    ¿No carga el buscador? <a href="https://script.google.com/macros/s/AKfycbxM35Wagvq6k7jR4Tmk9H1SKhx-BWO3L58MP8Z4uf36zDL22raamHEpWx0w37tU1sifQw/exec" target="_blank" rel="noopener">Abrir aplicación</a>
-  </div>
-  <script>
-    // Fallback visual para que el visitante tenga una vía directa si el marco no carga.
-    window.setTimeout(function () {
-      var frame = document.querySelector('.app-frame');
-      try {
-        if (!frame || !frame.contentWindow) document.getElementById('fallback').style.display = 'block';
-      } catch (e) {
-        // El navegador no permite inspeccionar el contenido cross-origin; el iframe sigue funcionando.
-      }
-    }, 9000);
-  </script>
 </body>
 </html>
