@@ -1,110 +1,43 @@
-/**
- * DOCENTES BROWN · BUSCADOR DE VACANTES 2027
- * Conector de SOLO LECTURA para la pestaña detPorEsc.
- *
- * IMPORTANTE: solo consulta las columnas autorizadas indicadas abajo.
- * No leer ni devolver el resto de la planilla.
- */
-
-const CONFIG = Object.freeze({
-  SPREADSHEET_ID: '1rEdm-qqJy_80Bdo7p3gcJLtX2q2i_GqI_VUX6grTmds',
-  SHEET_NAME: 'detPorEsc',
-  HEADER_ROW: 1,
-  FIRST_DATA_ROW: 2,
-  DAY_NAMES: ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
-});
-
-/** Publica la interfaz del buscador. */
-function doGet() {
-  return HtmlService
-    .createHtmlOutputFromFile('index')
-    .setTitle('Buscador de Vacantes 2027 · Docentes Brown')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
-    // Permite mostrar el buscador dentro de la página pública de GitHub Pages.
-    // Es una app de consulta: no tiene acciones que modifiquen la planilla.
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-}
-
-/**
- * Devuelve solamente los campos permitidos para mostrar en la aplicación.
- * Se ejecuta con la identidad de quien implementó la aplicación web.
- * La cuenta implementadora necesita permiso de LECTOR sobre la planilla.
- */
-function getVacantes() {
-  const spreadsheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-  const sheet = spreadsheet.getSheetByName(CONFIG.SHEET_NAME);
-
-  if (!sheet) {
-    throw new Error('No se encontró la pestaña "' + CONFIG.SHEET_NAME + '". Revisá el nombre de la pestaña en Google Sheets.');
-  }
-
-  const lastRow = sheet.getLastRow();
-  if (lastRow < CONFIG.FIRST_DATA_ROW) {
-    return { records: [], count: 0, updatedAt: new Date().toISOString() };
-  }
-
-  const numberOfRows = lastRow - CONFIG.HEADER_ROW;
-
-  // LISTA BLANCA DE COLUMNAS:
-  // A:D = código escuela, curso/sección, PID, CUPOF.
-  // F   = nivel-modalidad.
-  // L   = fecha de producción de la vacante.
-  // W:AC = módulo/cargo, cantidad de módulos, lunes a viernes.
-  // Se hacen lecturas separadas para NO tocar las columnas intermedias ocultas.
-  const colsAtoD = sheet.getRange(CONFIG.FIRST_DATA_ROW, 1, numberOfRows, 4).getDisplayValues();
-  const colF = sheet.getRange(CONFIG.FIRST_DATA_ROW, 6, numberOfRows, 1).getDisplayValues();
-  const colL = sheet.getRange(CONFIG.FIRST_DATA_ROW, 12, numberOfRows, 1).getDisplayValues();
-  const colsWtoAC = sheet.getRange(CONFIG.FIRST_DATA_ROW, 23, numberOfRows, 7).getDisplayValues();
-
-  const records = [];
-
-  for (let i = 0; i < numberOfRows; i++) {
-    const base = colsAtoD[i];
-    const services = colsWtoAC[i];
-
-    const record = {
-      id: 'fila-' + (CONFIG.FIRST_DATA_ROW + i),
-      escuelaCodigo: clean_(base[0]),       // A
-      cursoSeccion: clean_(base[1]),        // B
-      pid: clean_(base[2]),                 // C
-      cupof: clean_(base[3]),               // D
-      nivelModalidad: clean_(colF[i][0]),   // F
-      fechaProduceVacante: clean_(colL[i][0]), // L
-      prestacion: clean_(services[0]),      // W
-      cantidadModulos: clean_(services[1]), // X
-      dias: []
-    };
-
-    for (let dayIndex = 0; dayIndex < CONFIG.DAY_NAMES.length; dayIndex++) {
-      const horario = clean_(services[dayIndex + 2]); // Y:AC
-      if (horario) {
-        record.dias.push({ dia: CONFIG.DAY_NAMES[dayIndex], horario: horario });
+<!doctype html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#172943">
+  <meta name="description" content="Buscador de Vacantes 2027 de Docentes Brown.">
+  <title>Buscador de Vacantes 2027 · Docentes Brown</title>
+  <style>
+    :root { color-scheme: light; --navy:#172943; --cream:#f5f1e8; --muted:#6f7b8b; }
+    * { box-sizing: border-box; }
+    html, body { margin:0; width:100%; min-height:100%; background:var(--cream); }
+    body { min-height:100vh; min-height:100dvh; overflow:hidden; font-family:Arial,sans-serif; }
+    .app-frame { display:block; width:100%; height:100vh; height:100dvh; border:0; background:var(--cream); }
+    .fallback { position:fixed; inset:auto 12px 12px; z-index:2; display:none; padding:12px 14px; border:1px solid #e8e1d5; border-radius:14px; background:#fffefa; color:var(--navy); font-size:13px; text-align:center; box-shadow:0 8px 25px #17294314; }
+    .fallback a { color:var(--navy); font-weight:700; }
+  </style>
+</head>
+<body>
+  <iframe
+    class="app-frame"
+    src="https://script.google.com/macros/s/AKfycbxM35Wagvq6k7jR4Tmk9H1SKhx-BWO3L58MP8Z4uf36zDL22raamHEpWx0w37tU1sifQw/exec"
+    title="Buscador de Vacantes 2027 · Docentes Brown"
+    loading="eager"
+    referrerpolicy="strict-origin-when-cross-origin"
+    allow="clipboard-read; clipboard-write">
+  </iframe>
+  <div class="fallback" id="fallback">
+    ¿No carga el buscador? <a href="https://script.google.com/macros/s/AKfycbxM35Wagvq6k7jR4Tmk9H1SKhx-BWO3L58MP8Z4uf36zDL22raamHEpWx0w37tU1sifQw/exec" target="_blank" rel="noopener">Abrir aplicación</a>
+  </div>
+  <script>
+    // Fallback visual para que el visitante tenga una vía directa si el marco no carga.
+    window.setTimeout(function () {
+      var frame = document.querySelector('.app-frame');
+      try {
+        if (!frame || !frame.contentWindow) document.getElementById('fallback').style.display = 'block';
+      } catch (e) {
+        // El navegador no permite inspeccionar el contenido cross-origin; el iframe sigue funcionando.
       }
-    }
-
-    // Omite únicamente filas sin ningún dato en las columnas autorizadas.
-    const hasContent = [
-      record.escuelaCodigo,
-      record.cursoSeccion,
-      record.pid,
-      record.cupof,
-      record.nivelModalidad,
-      record.fechaProduceVacante,
-      record.prestacion,
-      record.cantidadModulos
-    ].some(Boolean) || record.dias.length > 0;
-
-    if (hasContent) records.push(record);
-  }
-
-  return {
-    records: records,
-    count: records.length,
-    updatedAt: new Date().toISOString()
-  };
-}
-
-/** Convierte valores a texto sin exponer datos adicionales. */
-function clean_(value) {
-  return value === null || value === undefined ? '' : String(value).trim();
-}
+    }, 9000);
+  </script>
+</body>
+</html>
