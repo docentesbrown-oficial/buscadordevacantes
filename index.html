@@ -1,431 +1,110 @@
-<!doctype html>
-<html lang="es-AR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#172943" />
-  <meta name="description" content="Buscador de registros y vacantes docentes 2027 de Docentes Brown." />
-  <title>Buscador de Vacantes 2027 · Docentes Brown</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Hebrew:wght@400;500;600;700&family=League+Spartan:wght@500;600;700;800&display=swap" rel="stylesheet" />
-  <style>
-    :root {
-      --navy: #172943;
-      --navy-2: #223b5d;
-      --blue: #54769d;
-      --blue-soft: #e8eef5;
-      --cream: #f5f1e8;
-      --paper: #fffefa;
-      --white: #ffffff;
-      --ink: #1d2938;
-      --muted: #738092;
-      --line: #e8e4dc;
-      --gold: #c39c5b;
-      --green: #537b68;
-      --shadow: 0 16px 44px rgba(23, 41, 67, .08);
-      --radius-xl: 28px;
-      --radius-lg: 20px;
-      --radius-md: 14px;
-    }
+/**
+ * DOCENTES BROWN · BUSCADOR DE VACANTES 2027
+ * Conector de SOLO LECTURA para la pestaña detPorEsc.
+ *
+ * IMPORTANTE: solo consulta las columnas autorizadas indicadas abajo.
+ * No leer ni devolver el resto de la planilla.
+ */
 
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      padding: max(18px, env(safe-area-inset-top)) 14px max(28px, env(safe-area-inset-bottom));
-      color: var(--ink);
-      background:
-        radial-gradient(circle at 92% 3%, rgba(195,156,91,.13), transparent 25rem),
-        var(--cream);
-      font-family: "IBM Plex Sans Hebrew", "IBM Plex Sans", Arial, sans-serif;
-      -webkit-font-smoothing: antialiased;
-    }
-    button, input, select { font: inherit; }
-    button { -webkit-tap-highlight-color: transparent; }
-    .app { width: min(100%, 620px); margin: 0 auto; }
+const CONFIG = Object.freeze({
+  SPREADSHEET_ID: '1rEdm-qqJy_80Bdo7p3gcJLtX2q2i_GqI_VUX6grTmds',
+  SHEET_NAME: 'detPorEsc',
+  HEADER_ROW: 1,
+  FIRST_DATA_ROW: 2,
+  DAY_NAMES: ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
+});
 
-    .topbar {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 8px 4px 22px;
-    }
-    .brand { display: flex; align-items: center; gap: 10px; }
-    .brand-mark {
-      width: 42px; height: 42px; display: grid; place-items: center;
-      color: var(--paper); background: var(--navy); border-radius: 14px;
-      font: 800 17px/1 "League Spartan", sans-serif; letter-spacing: -1px;
-      box-shadow: 0 6px 14px rgba(23,41,67,.16);
-    }
-    .brand-name { color: var(--navy); font: 800 17px/1 "League Spartan", sans-serif; letter-spacing: .3px; }
-    .brand-sub { margin-top: 4px; color: var(--muted); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; }
-    .year-pill {
-      padding: 8px 12px; border: 1px solid rgba(23,41,67,.1); border-radius: 999px;
-      color: var(--navy); background: rgba(255,254,250,.7); font-size: 12px; font-weight: 700;
-    }
+/** Publica la interfaz del buscador. */
+function doGet() {
+  return HtmlService
+    .createHtmlOutputFromFile('index')
+    .setTitle('Buscador de Vacantes 2027 · Docentes Brown')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
+    // Permite mostrar el buscador dentro de la página pública de GitHub Pages.
+    // Es una app de consulta: no tiene acciones que modifiquen la planilla.
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
 
-    .hero { padding: 18px 6px 24px; }
-    .eyebrow { display: flex; align-items: center; gap: 8px; color: var(--blue); font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
-    .eyebrow::before { content: ""; width: 20px; height: 2px; border-radius: 2px; background: var(--gold); }
-    h1 {
-      max-width: 500px; margin: 12px 0 8px; color: var(--navy);
-      font: 800 clamp(36px, 9vw, 53px)/.98 "League Spartan", sans-serif;
-      letter-spacing: -1.7px;
-    }
-    .hero p { max-width: 440px; margin: 12px 0 0; color: #667386; font-size: 14px; line-height: 1.6; }
+/**
+ * Devuelve solamente los campos permitidos para mostrar en la aplicación.
+ * Se ejecuta con la identidad de quien implementó la aplicación web.
+ * La cuenta implementadora necesita permiso de LECTOR sobre la planilla.
+ */
+function getVacantes() {
+  const spreadsheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sheet = spreadsheet.getSheetByName(CONFIG.SHEET_NAME);
 
-    .search-panel {
-      padding: 22px; border: 1px solid rgba(255,255,255,.88); border-radius: var(--radius-xl);
-      background: var(--paper); box-shadow: var(--shadow);
-    }
-    .panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 17px; }
-    .panel-heading h2 { margin: 0; color: var(--navy); font: 700 22px/1.1 "League Spartan", sans-serif; }
-    .panel-heading span { color: var(--muted); font-size: 11px; }
-    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .field { min-width: 0; }
-    .field label, .filter-label { display: block; margin: 0 0 7px 2px; color: #4f5d70; font-size: 11px; font-weight: 700; }
-    .input-wrap { position: relative; }
-    .input-icon { position: absolute; left: 13px; top: 50%; width: 17px; height: 17px; color: #8491a0; transform: translateY(-50%); pointer-events: none; }
-    .field input, .select-field select {
-      width: 100%; min-height: 50px; padding: 0 13px; border: 1px solid var(--line); border-radius: 14px;
-      outline: none; color: var(--navy); background: #fff; font-size: 14px; transition: border-color .2s, box-shadow .2s;
-    }
-    .field input { padding-left: 40px; }
-    .field input::placeholder { color: #a4acb6; }
-    .field input:focus, .select-field select:focus { border-color: #7894b4; box-shadow: 0 0 0 3px rgba(84,118,157,.12); }
-    .search-hint { margin: 12px 2px 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+  if (!sheet) {
+    throw new Error('No se encontró la pestaña "' + CONFIG.SHEET_NAME + '". Revisá el nombre de la pestaña en Google Sheets.');
+  }
 
-    details.filters { margin-top: 19px; border-top: 1px solid var(--line); padding-top: 15px; }
-    details.filters summary { display: flex; align-items: center; justify-content: space-between; min-height: 34px; color: var(--navy); cursor: pointer; list-style: none; font-size: 13px; font-weight: 700; }
-    details.filters summary::-webkit-details-marker { display: none; }
-    .summary-left { display: inline-flex; align-items: center; gap: 9px; }
-    .filter-count { display: grid; place-items: center; width: 21px; height: 21px; border-radius: 50%; color: var(--blue); background: var(--blue-soft); font-size: 11px; }
-    .chevron { color: #8591a0; transition: transform .2s; }
-    details[open] .chevron { transform: rotate(180deg); }
-    .filters-content { display: grid; gap: 15px; padding-top: 14px; }
-    .filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .select-field select { min-height: 45px; padding: 0 11px; color: #3a4a5f; font-size: 12px; }
-    .days-title { margin-bottom: 9px; }
-    .day-options { display: flex; flex-wrap: wrap; gap: 7px; }
-    .day-chip {
-      min-height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px;
-      color: #657184; background: #fff; cursor: pointer; font-size: 12px; font-weight: 600; transition: .18s;
-    }
-    .day-chip[aria-pressed="true"] { border-color: var(--navy); color: #fff; background: var(--navy); }
-    .day-note { margin: 8px 1px 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+  const lastRow = sheet.getLastRow();
+  if (lastRow < CONFIG.FIRST_DATA_ROW) {
+    return { records: [], count: 0, updatedAt: new Date().toISOString() };
+  }
 
-    .results-head { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin: 27px 4px 13px; }
-    .results-head h2 { margin: 0; color: var(--navy); font: 700 24px/1 "League Spartan", sans-serif; }
-    .result-count { color: var(--muted); font-size: 11px; text-align: right; }
-    .result-count strong { display: block; color: var(--navy); font: 700 22px/1 "League Spartan", sans-serif; }
-    .results-list { display: grid; gap: 12px; }
-    .result-card {
-      position: relative; overflow: hidden; padding: 18px; border: 1px solid rgba(255,255,255,.9);
-      border-radius: var(--radius-lg); background: var(--paper); box-shadow: 0 8px 24px rgba(23,41,67,.045);
-    }
-    .result-card::before { content: ""; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--gold); }
-    .card-top { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
-    .card-kicker { color: var(--blue); font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; }
-    .school-code { flex: 0 0 auto; padding: 6px 9px; border-radius: 9px; color: var(--navy); background: var(--blue-soft); font: 700 11px/1 "IBM Plex Sans Hebrew", sans-serif; }
-    .result-card h3 { margin: 8px 0 5px; color: var(--navy); font: 700 22px/1.05 "League Spartan", sans-serif; }
-    .pid-line { color: #788598; font-size: 11px; }
-    .card-divider { height: 1px; margin: 14px 0; background: var(--line); }
-    .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px 10px; }
-    .meta-label { display: block; margin-bottom: 4px; color: #8993a0; font-size: 10px; }
-    .meta-value { color: #34445a; font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
-    .days-row { display: flex; flex-wrap: wrap; gap: 5px; }
-    .day-tag { padding: 4px 7px; border-radius: 7px; color: #455a73; background: #f0f3f6; font-size: 10px; font-weight: 600; }
-    .empty-state { display: none; padding: 34px 20px; border: 1px dashed #d8d4ca; border-radius: var(--radius-lg); color: var(--muted); background: rgba(255,254,250,.55); text-align: center; }
-    .empty-state strong { display: block; margin-bottom: 6px; color: var(--navy); font: 700 20px "League Spartan", sans-serif; }
-    .empty-icon { display: grid; place-items: center; width: 46px; height: 46px; margin: 0 auto 12px; border-radius: 16px; color: var(--blue); background: var(--blue-soft); }
-    .footer { padding: 28px 10px 12px; color: #89919b; font-size: 10px; line-height: 1.6; text-align: center; }
-    .footer strong { color: var(--navy); font: 700 13px "League Spartan", sans-serif; }
-    .demo-notice { display: none; margin: 14px 0 0; padding: 10px 12px; border: 1px solid #ead9b8; border-radius: 12px; color: #806638; background: #fbf5e9; font-size: 11px; line-height: 1.5; }
-    .clear-button { margin-top: 2px; padding: 8px 0; border: 0; color: var(--blue); background: transparent; cursor: pointer; font-size: 11px; font-weight: 700; text-align: left; }
+  const numberOfRows = lastRow - CONFIG.HEADER_ROW;
 
-    @media (max-width: 430px) {
-      body { padding-right: 11px; padding-left: 11px; }
-      .search-panel { padding: 17px; border-radius: 24px; }
-      .field-grid { grid-template-columns: 1fr; gap: 11px; }
-      .filter-grid { grid-template-columns: 1fr; }
-      .hero { padding-top: 13px; }
-      .hero p { font-size: 13px; }
-      .result-card { padding: 16px; }
-    }
-    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
-  </style>
-</head>
-<body>
-  <main class="app">
-    <header class="topbar">
-      <div class="brand">
-        <div class="brand-mark" aria-hidden="true">DB</div>
-        <div>
-          <div class="brand-name">DOCENTES BROWN</div>
-          <div class="brand-sub">Comunidad docente</div>
-        </div>
-      </div>
-      <div class="year-pill">Ciclo 2027</div>
-    </header>
+  // LISTA BLANCA DE COLUMNAS:
+  // A:D = código escuela, curso/sección, PID, CUPOF.
+  // F   = nivel-modalidad.
+  // L   = fecha de producción de la vacante.
+  // W:AC = módulo/cargo, cantidad de módulos, lunes a viernes.
+  // Se hacen lecturas separadas para NO tocar las columnas intermedias ocultas.
+  const colsAtoD = sheet.getRange(CONFIG.FIRST_DATA_ROW, 1, numberOfRows, 4).getDisplayValues();
+  const colF = sheet.getRange(CONFIG.FIRST_DATA_ROW, 6, numberOfRows, 1).getDisplayValues();
+  const colL = sheet.getRange(CONFIG.FIRST_DATA_ROW, 12, numberOfRows, 1).getDisplayValues();
+  const colsWtoAC = sheet.getRange(CONFIG.FIRST_DATA_ROW, 23, numberOfRows, 7).getDisplayValues();
 
-    <section class="hero" aria-labelledby="main-title">
-      <div class="eyebrow">Buscador docente</div>
-      <h1 id="main-title">Encontrá lo que estás buscando.</h1>
-      <p>Consultá los registros por código de materia o de escuela. También podés combinar filtros para afinar los resultados.</p>
-    </section>
+  const records = [];
 
-    <section class="search-panel" aria-label="Búsqueda y filtros">
-      <div class="panel-heading">
-        <h2>Buscar registros</h2>
-        <span>Todos los registros</span>
-      </div>
-      <div class="field-grid">
-        <div class="field">
-          <label for="pid-search">Código de materia (PID)</label>
-          <div class="input-wrap">
-            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg>
-            <input id="pid-search" type="search" placeholder="Ej. BIO101" autocomplete="off" spellcheck="false" />
-          </div>
-        </div>
-        <div class="field">
-          <label for="school-search">Código de escuela</label>
-          <div class="input-wrap">
-            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 20h18M5 20V8l7-4 7 4v12M9 20v-5h6v5M8 10h.01M12 10h.01M16 10h.01" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <input id="school-search" type="search" placeholder="Ej. 0001" autocomplete="off" spellcheck="false" />
-          </div>
-        </div>
-      </div>
-      <p class="search-hint">Podés buscar con uno de los códigos o completar ambos. Los resultados se actualizan al escribir.</p>
+  for (let i = 0; i < numberOfRows; i++) {
+    const base = colsAtoD[i];
+    const services = colsWtoAC[i];
 
-      <details class="filters" id="filters-details">
-        <summary>
-          <span class="summary-left"><span class="filter-count" id="active-filter-count">0</span> Filtros opcionales</span>
-          <svg class="chevron" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </summary>
-        <div class="filters-content">
-          <div class="filter-grid">
-            <div class="select-field">
-              <label class="filter-label" for="level-filter">Nivel / modalidad</label>
-              <select id="level-filter"><option value="">Todos los niveles</option></select>
-            </div>
-            <div class="select-field">
-              <label class="filter-label" for="situation-filter">Situación de revista</label>
-              <select id="situation-filter"><option value="">Todas las situaciones</option></select>
-            </div>
-            <div class="select-field">
-              <label class="filter-label" for="service-filter">Tipo de prestación</label>
-              <select id="service-filter"><option value="">Todas las prestaciones</option></select>
-            </div>
-            <div class="select-field">
-              <label class="filter-label" for="modality-filter">Modalidad</label>
-              <select id="modality-filter"><option value="">Todas las modalidades</option></select>
-            </div>
-          </div>
-          <div>
-            <div class="filter-label days-title">Días disponibles</div>
-            <div class="day-options" id="day-options" aria-label="Seleccionar días disponibles">
-              <button class="day-chip" type="button" data-day="Lunes" aria-pressed="false">Lun</button>
-              <button class="day-chip" type="button" data-day="Martes" aria-pressed="false">Mar</button>
-              <button class="day-chip" type="button" data-day="Miércoles" aria-pressed="false">Mié</button>
-              <button class="day-chip" type="button" data-day="Jueves" aria-pressed="false">Jue</button>
-              <button class="day-chip" type="button" data-day="Viernes" aria-pressed="false">Vie</button>
-            </div>
-            <p class="day-note">Al elegir varios días, se mostrarán registros que incluyan todos los días seleccionados.</p>
-          </div>
-          <button class="clear-button" id="clear-filters" type="button">Limpiar filtros</button>
-        </div>
-      </details>
-      <div class="demo-notice" id="demo-notice">Estás viendo datos ficticios de demostración. Antes de publicar, reemplazá la base de ejemplo por registros depurados y autorizados.</div>
-    </section>
+    const record = {
+      id: 'fila-' + (CONFIG.FIRST_DATA_ROW + i),
+      escuelaCodigo: clean_(base[0]),       // A
+      cursoSeccion: clean_(base[1]),        // B
+      pid: clean_(base[2]),                 // C
+      cupof: clean_(base[3]),               // D
+      nivelModalidad: clean_(colF[i][0]),   // F
+      fechaProduceVacante: clean_(colL[i][0]), // L
+      prestacion: clean_(services[0]),      // W
+      cantidadModulos: clean_(services[1]), // X
+      dias: []
+    };
 
-    <section aria-labelledby="results-title">
-      <div class="results-head">
-        <h2 id="results-title">Registros</h2>
-        <div class="result-count"><strong id="result-number">0</strong><span id="result-label">coincidencias</span></div>
-      </div>
-      <div class="results-list" id="results-list" aria-live="polite"></div>
-      <div class="empty-state" id="empty-state">
-        <div class="empty-icon" aria-hidden="true">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg>
-        </div>
-        <strong>No encontramos coincidencias</strong>
-        Probá modificar los códigos o quitar alguno de los filtros seleccionados.
-      </div>
-    </section>
-
-    <footer class="footer">
-      <strong>DOCENTES BROWN</strong><br />
-      Buscador de Vacantes · 2027<br />
-      La información publicada debe estar previamente revisada y depurada.
-    </footer>
-  </main>
-
-  <script src="vacantes.js"></script>
-  <script>
-    (() => {
-      "use strict";
-
-      const DAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
-      const rawRecords = Array.isArray(window.VACANTES) ? window.VACANTES : [];
-
-      // Lista blanca: la interfaz solo utiliza y muestra estos campos.
-      // No agregues datos personales a vacantes.js: ese archivo será público.
-      const safeText = (value) => String(value ?? "").trim();
-      const records = rawRecords.map((record, index) => ({
-        id: safeText(record.id) || `registro-${index + 1}`,
-        escuelaCodigo: safeText(record.escuelaCodigo),
-        pid: safeText(record.pid),
-        materiaCargo: safeText(record.materiaCargo),
-        nivel: safeText(record.nivel),
-        modalidad: safeText(record.modalidad),
-        situacion: safeText(record.situacion),
-        prestacion: safeText(record.prestacion),
-        dias: Array.isArray(record.dias) ? DAYS.filter(day => record.dias.includes(day)) : [],
-        horario: safeText(record.horario),
-        turno: safeText(record.turno),
-        curso: safeText(record.curso)
-      }));
-
-      const $ = (id) => document.getElementById(id);
-      const pidInput = $("pid-search");
-      const schoolInput = $("school-search");
-      const levelSelect = $("level-filter");
-      const situationSelect = $("situation-filter");
-      const serviceSelect = $("service-filter");
-      const modalitySelect = $("modality-filter");
-      const resultsList = $("results-list");
-      const emptyState = $("empty-state");
-      const selectedDays = new Set();
-
-      const normalize = (value) => safeText(value)
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-
-      const uniqueValues = (key) => [...new Set(records.map(r => r[key]).filter(Boolean))]
-        .sort((a, b) => a.localeCompare(b, "es"));
-
-      function fillSelect(select, values, allLabel) {
-        select.innerHTML = "";
-        const first = document.createElement("option");
-        first.value = "";
-        first.textContent = allLabel;
-        select.appendChild(first);
-        values.forEach(value => {
-          const option = document.createElement("option");
-          option.value = value;
-          option.textContent = value;
-          select.appendChild(option);
-        });
+    for (let dayIndex = 0; dayIndex < CONFIG.DAY_NAMES.length; dayIndex++) {
+      const horario = clean_(services[dayIndex + 2]); // Y:AC
+      if (horario) {
+        record.dias.push({ dia: CONFIG.DAY_NAMES[dayIndex], horario: horario });
       }
+    }
 
-      fillSelect(levelSelect, uniqueValues("nivel"), "Todos los niveles");
-      fillSelect(situationSelect, uniqueValues("situacion"), "Todas las situaciones");
-      fillSelect(serviceSelect, uniqueValues("prestacion"), "Todas las prestaciones");
-      fillSelect(modalitySelect, uniqueValues("modalidad"), "Todas las modalidades");
+    // Omite únicamente filas sin ningún dato en las columnas autorizadas.
+    const hasContent = [
+      record.escuelaCodigo,
+      record.cursoSeccion,
+      record.pid,
+      record.cupof,
+      record.nivelModalidad,
+      record.fechaProduceVacante,
+      record.prestacion,
+      record.cantidadModulos
+    ].some(Boolean) || record.dias.length > 0;
 
-      // Escapa cualquier texto antes de insertarlo como HTML.
-      function escapeHTML(value) {
-        return safeText(value).replace(/[&<>"']/g, char => ({
-          "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-        })[char]);
-      }
+    if (hasContent) records.push(record);
+  }
 
-      function meta(label, value) {
-        if (!value) return "";
-        return `<div><span class="meta-label">${label}</span><span class="meta-value">${escapeHTML(value)}</span></div>`;
-      }
+  return {
+    records: records,
+    count: records.length,
+    updatedAt: new Date().toISOString()
+  };
+}
 
-      function card(record) {
-        const dayTags = record.dias.length
-          ? record.dias.map(day => `<span class="day-tag">${escapeHTML(day)}</span>`).join("")
-          : `<span class="meta-value">No informado</span>`;
-        return `
-          <article class="result-card">
-            <div class="card-top">
-              <div class="card-kicker">Registro docente</div>
-              <div class="school-code">Escuela ${escapeHTML(record.escuelaCodigo || "—")}</div>
-            </div>
-            <h3>${escapeHTML(record.materiaCargo || "Materia o cargo no informado")}</h3>
-            <div class="pid-line">Código PID: ${escapeHTML(record.pid || "No informado")}</div>
-            <div class="card-divider"></div>
-            <div class="meta-grid">
-              ${meta("Nivel", record.nivel)}
-              ${meta("Modalidad", record.modalidad)}
-              ${meta("Situación de revista", record.situacion)}
-              ${meta("Tipo de prestación", record.prestacion)}
-              ${meta("Turno", record.turno)}
-              ${meta("Curso", record.curso)}
-              <div><span class="meta-label">Días</span><div class="days-row">${dayTags}</div></div>
-              ${meta("Horario", record.horario)}
-            </div>
-          </article>`;
-      }
-
-      function getFilteredRecords() {
-        const pid = normalize(pidInput.value);
-        const school = normalize(schoolInput.value);
-        const level = levelSelect.value;
-        const situation = situationSelect.value;
-        const service = serviceSelect.value;
-        const modality = modalitySelect.value;
-
-        return records.filter(record => {
-          if (pid && !normalize(record.pid).includes(pid)) return false;
-          if (school && !normalize(record.escuelaCodigo).includes(school)) return false;
-          if (level && record.nivel !== level) return false;
-          if (situation && record.situacion !== situation) return false;
-          if (service && record.prestacion !== service) return false;
-          if (modality && record.modalidad !== modality) return false;
-          // Coincidencia AND: el registro debe incluir TODOS los días elegidos.
-          if (![...selectedDays].every(day => record.dias.includes(day))) return false;
-          return true;
-        }).sort((a, b) => a.escuelaCodigo.localeCompare(b.escuelaCodigo, "es") || a.pid.localeCompare(b.pid, "es"));
-      }
-
-      function updateActiveCount() {
-        const count = [pidInput.value, schoolInput.value, levelSelect.value, situationSelect.value, serviceSelect.value, modalitySelect.value]
-          .filter(Boolean).length + selectedDays.size;
-        $("active-filter-count").textContent = String(count);
-      }
-
-      function render() {
-        const filtered = getFilteredRecords();
-        $("result-number").textContent = String(filtered.length);
-        $("result-label").textContent = filtered.length === 1 ? "coincidencia" : "coincidencias";
-        resultsList.innerHTML = filtered.map(card).join("");
-        emptyState.style.display = filtered.length ? "none" : "block";
-        updateActiveCount();
-      }
-
-      [pidInput, schoolInput, levelSelect, situationSelect, serviceSelect, modalitySelect]
-        .forEach(element => element.addEventListener("input", render));
-      [levelSelect, situationSelect, serviceSelect, modalitySelect]
-        .forEach(element => element.addEventListener("change", render));
-
-      document.querySelectorAll(".day-chip").forEach(button => {
-        button.addEventListener("click", () => {
-          const day = button.dataset.day;
-          if (selectedDays.has(day)) selectedDays.delete(day);
-          else selectedDays.add(day);
-          button.setAttribute("aria-pressed", String(selectedDays.has(day)));
-          render();
-        });
-      });
-
-      $("clear-filters").addEventListener("click", () => {
-        pidInput.value = "";
-        schoolInput.value = "";
-        levelSelect.value = "";
-        situationSelect.value = "";
-        serviceSelect.value = "";
-        modalitySelect.value = "";
-        selectedDays.clear();
-        document.querySelectorAll(".day-chip").forEach(button => button.setAttribute("aria-pressed", "false"));
-        render();
-      });
-
-      if (window.DEMO_MODE === true) $("demo-notice").style.display = "block";
-      render();
-    })();
-  </script>
-</body>
-</html>
+/** Convierte valores a texto sin exponer datos adicionales. */
+function clean_(value) {
+  return value === null || value === undefined ? '' : String(value).trim();
+}
